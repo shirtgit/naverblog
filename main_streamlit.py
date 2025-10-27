@@ -8,21 +8,46 @@ from io import StringIO
 import requests
 import json
 from PIL import Image
-import tkinter as tk
-from tkinter import filedialog
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver import ActionChains
-from selenium.webdriver.common.keys import Keys
-from webdriver_manager.chrome import ChromeDriverManager
-import pyperclip
-import clipboard
 import platform
 import random
+
+# GUI 관련 모듈 (로컬 환경에서만 사용)
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    GUI_AVAILABLE = True
+except ImportError:
+    GUI_AVAILABLE = False
+    st.warning("GUI 파일 선택 기능은 로컬 환경에서만 사용 가능합니다.")
+
+# Selenium 관련 모듈 (호환성 확인)
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver import ActionChains
+    from selenium.webdriver.common.keys import Keys
+    from webdriver_manager.chrome import ChromeDriverManager
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+    st.error("Selenium이 설치되지 않았습니다. 자동화 기능을 사용할 수 없습니다.")
+
+# 클립보드 관련 모듈 (선택적)
+try:
+    import pyperclip
+    CLIPBOARD_AVAILABLE = True
+except ImportError:
+    CLIPBOARD_AVAILABLE = False
+
+try:
+    import clipboard
+    CLIPBOARD2_AVAILABLE = True
+except ImportError:
+    CLIPBOARD2_AVAILABLE = False
 
 # 제미나이 API 라이브러리 (호환성 문제가 있을 수 있음)
 try:
@@ -110,47 +135,58 @@ def select_folder_or_files():
         )
         
         if choice == "폴더 선택 (폴더 내 모든 이미지)":
-            # 폴더 선택 다이얼로그
-            folder_path = filedialog.askdirectory(
-                title="이미지 폴더를 선택하세요",
-                parent=root
-            )
-            root.destroy()
-            
-            if folder_path:
-                # 이미지 파일들 가져오기
-                image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-                image_files = []
-                for ext in image_extensions:
-                    image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext}")))
-                    image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext.upper()}")))
+            if GUI_AVAILABLE:
+                # 폴더 선택 다이얼로그
+                folder_path = filedialog.askdirectory(
+                    title="이미지 폴더를 선택하세요",
+                    parent=root
+                )
+                root.destroy()
                 
-                if image_files:
-                    return folder_path, image_files
+                if folder_path:
+                    # 이미지 파일들 가져오기
+                    image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                    image_files = []
+                    for ext in image_extensions:
+                        image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext}")))
+                        image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext.upper()}")))
+                    
+                    if image_files:
+                        return folder_path, image_files
+                    else:
+                        st.warning("선택한 폴더에 이미지 파일이 없습니다!")
+                        return None, []
                 else:
-                    st.warning("선택한 폴더에 이미지 파일이 없습니다!")
+                    root.destroy()
                     return None, []
+            else:
+                st.error("GUI 파일 선택은 로컬 환경에서만 지원됩니다. 클라우드에서는 파일 업로드 기능을 사용해주세요.")
+                return None, []
             
         else:  # 개별 파일 선택
-            # 파일 선택 다이얼로그 (다중 선택 가능)
-            file_paths = filedialog.askopenfilenames(
-                title="이미지 파일들을 선택하세요",
-                filetypes=[
-                    ("이미지 파일", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
-                    ("JPEG", "*.jpg *.jpeg"),
-                    ("PNG", "*.png"),
-                    ("GIF", "*.gif"),
-                    ("BMP", "*.bmp"),
-                    ("WebP", "*.webp"),
-                    ("모든 파일", "*.*")
-                ],
-                parent=root
-            )
-            root.destroy()
-            
-            if file_paths:
-                # 파일들이 있는 디렉토리를 기준 폴더로 설정
-                base_folder = os.path.dirname(file_paths[0]) if file_paths else ""
+            if GUI_AVAILABLE:
+                # 파일 선택 다이얼로그 (다중 선택 가능)
+                file_paths = filedialog.askopenfilenames(
+                    title="이미지 파일들을 선택하세요",
+                    filetypes=[
+                        ("이미지 파일", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
+                        ("JPEG", "*.jpg *.jpeg"),
+                        ("PNG", "*.png"),
+                        ("GIF", "*.gif"),
+                        ("BMP", "*.bmp"),
+                        ("WebP", "*.webp"),
+                        ("모든 파일", "*.*")
+                    ],
+                    parent=root
+                )
+                root.destroy()
+                
+                if file_paths:
+                    # 파일들이 있는 디렉토리를 기준 폴더로 설정
+                    base_folder = os.path.dirname(file_paths[0]) if file_paths else ""
+            else:
+                st.error("GUI 파일 선택은 로컬 환경에서만 지원됩니다. 클라우드에서는 파일 업로드 기능을 사용해주세요.")
+                return None, []
                 return base_folder, list(file_paths)
         
         root.destroy()
@@ -491,67 +527,109 @@ def main():
                     else:
                         st.info("🖼️ 개별 이미지 파일들을 직접 선택할 수 있습니다. (다중 선택 가능)")
                         
-                with col_img2:
-                    if st.button("📁 선택하기", use_container_width=True, key="select_images_btn"):
-                        try:
-                            # tkinter 루트 창 생성 (숨김)
-                            root = tk.Tk()
-                            root.withdraw()
-                            root.wm_attributes('-topmost', 1)
-                            
-                            if selection_mode == "폴더 선택 (폴더 내 모든 이미지)":
-                                # 폴더 선택 다이얼로그
-                                folder_path = filedialog.askdirectory(
-                                    title="이미지 폴더를 선택하세요",
-                                    parent=root
-                                )
-                                root.destroy()
+                # 이미지 선택 방법 (환경에 따라 다름)
+                if GUI_AVAILABLE:
+                    # 로컬 환경: 파일/폴더 선택 다이얼로그
+                    with col_img2:
+                        if st.button("📁 선택하기", use_container_width=True, key="select_images_btn"):
+                            try:
+                                # tkinter 루트 창 생성 (숨김)
+                                root = tk.Tk()
+                                root.withdraw()
+                                root.wm_attributes('-topmost', 1)
                                 
-                                if folder_path:
-                                    # 이미지 파일들 가져오기
-                                    image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-                                    image_files = []
-                                    for ext in image_extensions:
-                                        image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext}")))
-                                        image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext.upper()}")))
+                                if selection_mode == "폴더 선택 (폴더 내 모든 이미지)":
+                                    # 폴더 선택 다이얼로그
+                                    folder_path = filedialog.askdirectory(
+                                        title="이미지 폴더를 선택하세요",
+                                        parent=root
+                                    )
+                                    root.destroy()
                                     
-                                    if image_files:
-                                        st.session_state.image_folder = folder_path
-                                        st.session_state.image_files = image_files
-                                        log_message(f"이미지 폴더 등록: {folder_path} ({len(image_files)}개 이미지)")
-                                        st.success(f"이미지 폴더가 등록되었습니다! ({len(image_files)}개 이미지)")
+                                    if folder_path:
+                                        # 이미지 파일들 가져오기
+                                        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+                                        image_files = []
+                                        for ext in image_extensions:
+                                            image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext}")))
+                                            image_files.extend(glob.glob(os.path.join(folder_path, f"*{ext.upper()}")))
+                                        
+                                        if image_files:
+                                            st.session_state.image_folder = folder_path
+                                            st.session_state.image_files = image_files
+                                            log_message(f"이미지 폴더 등록: {folder_path} ({len(image_files)}개 이미지)")
+                                            st.success(f"이미지 폴더가 등록되었습니다! ({len(image_files)}개 이미지)")
+                                            st.rerun()
+                                        else:
+                                            st.warning("선택한 폴더에 이미지 파일이 없습니다!")
+                                
+                                else:  # 개별 파일 선택
+                                    # 파일 선택 다이얼로그 (다중 선택 가능)
+                                    file_paths = filedialog.askopenfilenames(
+                                        title="이미지 파일들을 선택하세요",
+                                        filetypes=[
+                                            ("이미지 파일", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
+                                            ("JPEG", "*.jpg *.jpeg"),
+                                            ("PNG", "*.png"),
+                                            ("GIF", "*.gif"),
+                                            ("BMP", "*.bmp"),
+                                            ("WebP", "*.webp"),
+                                            ("모든 파일", "*.*")
+                                        ],
+                                        parent=root
+                                    )
+                                    root.destroy()
+                                    
+                                    if file_paths:
+                                        # 파일들이 있는 디렉토리를 기준 폴더로 설정
+                                        base_folder = os.path.dirname(file_paths[0]) if file_paths else ""
+                                        st.session_state.image_folder = base_folder
+                                        st.session_state.image_files = list(file_paths)
+                                        log_message(f"이미지 파일 등록: {len(file_paths)}개 파일 선택됨")
+                                        st.success(f"이미지 파일들이 등록되었습니다! ({len(file_paths)}개 파일)")
                                         st.rerun()
-                                    else:
-                                        st.warning("선택한 폴더에 이미지 파일이 없습니다!")
                                 
-                            else:  # 개별 파일 선택
-                                # 파일 선택 다이얼로그 (다중 선택 가능)
-                                file_paths = filedialog.askopenfilenames(
-                                    title="이미지 파일들을 선택하세요",
-                                    filetypes=[
-                                        ("이미지 파일", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
-                                        ("JPEG", "*.jpg *.jpeg"),
-                                        ("PNG", "*.png"),
-                                        ("GIF", "*.gif"),
-                                        ("BMP", "*.bmp"),
-                                        ("WebP", "*.webp"),
-                                        ("모든 파일", "*.*")
-                                    ],
-                                    parent=root
-                                )
-                                root.destroy()
-                                
-                                if file_paths:
-                                    # 파일들이 있는 디렉토리를 기준 폴더로 설정
-                                    base_folder = os.path.dirname(file_paths[0]) if file_paths else ""
-                                    st.session_state.image_folder = base_folder
-                                    st.session_state.image_files = list(file_paths)
-                                    log_message(f"이미지 파일 등록: {len(file_paths)}개 파일 선택됨")
-                                    st.success(f"이미지 파일들이 등록되었습니다! ({len(file_paths)}개 파일)")
-                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"파일 선택 중 오류가 발생했습니다: {str(e)}")
+                
+                else:
+                    # 클라우드 환경: 파일 업로드
+                    with col_img2:
+                        st.info("💡 파일 업로드 사용")
+                    
+                    st.markdown("---")
+                    st.markdown("**📤 이미지 파일 업로드 (클라우드 환경)**")
+                    
+                    uploaded_files = st.file_uploader(
+                        "이미지 파일들을 업로드하세요",
+                        type=['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'],
+                        accept_multiple_files=True,
+                        key="image_upload",
+                        help="여러 이미지 파일을 동시에 선택할 수 있습니다."
+                    )
+                    
+                    if uploaded_files:
+                        try:
+                            # 업로드된 파일들을 임시로 저장
+                            import tempfile
+                            temp_dir = tempfile.mkdtemp()
+                            image_files = []
                             
+                            for uploaded_file in uploaded_files:
+                                # 임시 파일로 저장
+                                temp_path = os.path.join(temp_dir, uploaded_file.name)
+                                with open(temp_path, 'wb') as f:
+                                    f.write(uploaded_file.getvalue())
+                                image_files.append(temp_path)
+                            
+                            # 세션 상태에 저장
+                            st.session_state.image_folder = temp_dir
+                            st.session_state.image_files = image_files
+                            log_message(f"이미지 파일 업로드 완료: {len(image_files)}개 파일")
+                            st.success(f"이미지 파일이 업로드되었습니다! ({len(image_files)}개 파일)")
+                            st.rerun()
                         except Exception as e:
-                            st.error(f"파일 선택 중 오류가 발생했습니다: {str(e)}")
+                            st.error(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
                 
                 # 등록된 이미지 폴더 정보 표시
                 if 'image_folder' in st.session_state and 'image_files' in st.session_state:
@@ -821,7 +899,11 @@ def main():
             
             with col_btn1:
                 if st.button("🚀 작업 수행", type="primary", use_container_width=True):
-                    execute_task(platform, st.session_state.api_key, phone_number, content, min_wait, max_wait, use_dynamic_ip)
+                    if not SELENIUM_AVAILABLE:
+                        st.error("⚠️ Selenium이 사용 불가능한 환경입니다. 로컬 환경에서 실행해주세요.")
+                        st.info("💡 이 앱은 브라우저 자동화를 위해 Selenium을 사용합니다. Streamlit Cloud에서는 작동하지 않습니다.")
+                    else:
+                        execute_task(platform, st.session_state.api_key, phone_number, content, min_wait, max_wait, use_dynamic_ip)
             
             with col_btn2:
                 if st.button("🔄 초기화", use_container_width=True):
