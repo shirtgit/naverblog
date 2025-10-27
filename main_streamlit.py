@@ -710,22 +710,49 @@ def main():
                         else:
                             st.error("❌ 로그인 페이지 테스트 실패!")
                 
-                if st.button("🔐 로그인 테스트", use_container_width=True):
+                if st.button("🔐 상세 로그인 테스트", use_container_width=True):
                     if st.session_state.account_data.empty:
                         st.error("❌ 먼저 계정 데이터를 추가해주세요!")
                     else:
-                        with st.spinner("로그인 테스트 중..."):
+                        with st.spinner("상세 로그인 테스트 중..."):
                             test_result = test_login_process()
                             if test_result:
                                 st.success("✅ 로그인 테스트 성공!")
                             else:
                                 st.error("❌ 로그인 테스트 실패!")
+                
+                if st.button("🌐 네이버 연결 테스트", use_container_width=True):
+                    with st.spinner("네이버 연결 테스트 중..."):
+                        test_result = test_naver_connection()
+                        if test_result:
+                            st.success("✅ 네이버 연결 테스트 성공!")
+                        else:
+                            st.error("❌ 네이버 연결 테스트 실패!")
             
             with col_test2:
                 if st.button("🔄 데이터 초기화", use_container_width=True):
                     reset_data()
                     st.success("✅ 데이터가 초기화되었습니다!")
                     st.rerun()
+                
+                if st.button("🎯 로그인만 테스트", use_container_width=True):
+                    if st.session_state.account_data.empty:
+                        st.error("❌ 먼저 계정 데이터를 추가해주세요!")
+                    else:
+                        with st.spinner("로그인만 테스트 중..."):
+                            test_result = test_login_only()
+                            if test_result:
+                                st.success("✅ 로그인만 테스트 성공!")
+                            else:
+                                st.error("❌ 로그인만 테스트 실패!")
+                
+                if st.button("⚡ 초간단 테스트", use_container_width=True):
+                    with st.spinner("초간단 테스트 중..."):
+                        test_result = test_simple_selenium()
+                        if test_result:
+                            st.success("✅ 초간단 테스트 성공!")
+                        else:
+                            st.error("❌ 초간단 테스트 실패!")
         
             # 콘텐츠 입력
             st.subheader("📝 콘텐츠 입력")
@@ -1045,29 +1072,88 @@ def process_keyword_file(file):
         log_message(f"키워드 파일 처리 오류: {str(e)}")
 
 def setup_chrome_driver():
-    """Chrome 드라이버 설정 (기존 webdriver.py 패턴 정확히 적용)"""
+    """Chrome 드라이버 설정 (상세 디버깅 강화)"""
     try:
         log_message("=== Chrome 드라이버 설정 시작 ===")
+        log_message(f"현재 작업 디렉토리: {os.getcwd()}")
         
-        # 기존 webdriver.py의 정확한 패턴 사용
-        service = Service(ChromeDriverManager().install())
+        # ChromeDriverManager 설치 확인
+        try:
+            log_message("Chrome 드라이버 다운로드/설치 중...")
+            driver_path = ChromeDriverManager().install()
+            log_message(f"✅ Chrome 드라이버 경로: {driver_path}")
+            
+            # 드라이버 파일 존재 확인
+            if os.path.exists(driver_path):
+                log_message(f"✅ 드라이버 파일 존재 확인됨")
+                file_size = os.path.getsize(driver_path)
+                log_message(f"드라이버 파일 크기: {file_size} bytes")
+            else:
+                log_message(f"❌ 드라이버 파일이 존재하지 않음: {driver_path}")
+                return None
+                
+        except Exception as e:
+            log_message(f"❌ Chrome 드라이버 다운로드 실패: {str(e)}")
+            import traceback
+            log_message(f"상세 오류: {traceback.format_exc()}")
+            return None
+        
+        # 서비스 설정
+        try:
+            log_message("Chrome 서비스 설정 중...")
+            service = Service(driver_path)
+            log_message("✅ Chrome 서비스 설정 완료")
+        except Exception as e:
+            log_message(f"❌ Chrome 서비스 설정 실패: {str(e)}")
+            return None
+        
+        # Chrome 옵션 설정
+        log_message("Chrome 옵션 설정 중...")
         chrome_options = Options()
         
-        # ✅ 필수: Headless 서버 환경에서 필요한 옵션 (기존 코드와 동일)
-        # chrome_options.add_argument('--headless')  # 화면 없이 실행
-        chrome_options.add_argument('--no-sandbox')  # 보안 샌드박스 비활성화
-        chrome_options.add_argument('--disable-dev-shm-usage')  # 메모리 사용 제한 해제
-        chrome_options.add_argument('--disable-gpu')  # GPU 비활성화 (가끔 필요)
-        chrome_options.add_argument('--window-size=1920x1080')  # 뷰포트 설정
+        # 기본 옵션들
+        options_list = [
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--window-size=1920,1080',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-extensions',
+            '--disable-plugins-discovery',
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--disable-web-security',
+            '--allow-running-insecure-content',
+            '--disable-features=VizDisplayCompositor'
+        ]
         
-        # 선택 옵션 (기존 코드와 동일)
+        for option in options_list:
+            chrome_options.add_argument(option)
+            log_message(f"옵션 추가: {option}")
+        
+        # 실험적 옵션 설정
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
         chrome_options.add_experimental_option("prefs", {
-            "profile.default_content_setting_values.notifications": 1
+            "profile.default_content_setting_values.notifications": 2
         })
+        log_message("✅ Chrome 옵션 설정 완료")
         
-        # 기존 코드와 동일한 방식으로 드라이버 생성
-        driver = webdriver.Chrome(options=chrome_options, service=service)
-        log_message("Chrome 웹드라이버 초기화 완료")
+        # 드라이버 생성 시도
+        try:
+            log_message("Chrome 웹드라이버 생성 중...")
+            driver = webdriver.Chrome(options=chrome_options, service=service)
+            log_message("✅ Chrome 웹드라이버 초기화 완료")
+            
+            # 드라이버 상태 확인
+            log_message(f"드라이버 세션 ID: {driver.session_id}")
+            log_message(f"드라이버 창 핸들: {driver.current_window_handle}")
+            log_message(f"현재 URL: {driver.current_url}")
+            
+        except Exception as e:
+            log_message(f"❌ Chrome 웹드라이버 초기화 실패: {str(e)}")
+            import traceback
+            log_message(f"상세 오류: {traceback.format_exc()}")
+            return None
         
         # webdriver 속성 제거 (기존 코드와 동일)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -1136,43 +1222,132 @@ def login_naver_blog(driver, account_data):
         log_message(f"드라이버 상태: {driver is not None}")
         log_message(f"계정 정보: {account_data}")
         
-        # 1단계: 네이버 로그인 페이지로 이동 (기존 login.enter_naver_login() 패턴)
+        # 필수 데이터 확인
+        if '계정명' not in account_data or '비밀번호' not in account_data:
+            log_message("오류: 계정명 또는 비밀번호가 없습니다.")
+            return False
+        
+        if not account_data['계정명'] or not account_data['비밀번호']:
+            log_message("오류: 계정명 또는 비밀번호가 비어있습니다.")
+            return False
+        
+        # 1단계: 네이버 로그인 페이지로 이동 (상세 디버깅)
         log_message("1단계: 네이버 로그인 페이지로 이동")
-        driver.get("https://nid.naver.com/nidlogin.login")
-        time.sleep(3)  # @sleep_after() 데코레이터와 동일
+        log_message(f"현재 드라이버 세션 ID: {driver.session_id}")
+        log_message(f"드라이버 창 핸들: {driver.current_window_handle}")
+        log_message(f"현재 URL (이동 전): {driver.current_url}")
+        
+        try:
+            log_message("네이버 로그인 URL로 GET 요청 시작...")
+            driver.get("https://nid.naver.com/nidlogin.login")
+            log_message("GET 요청 완료, 페이지 로딩 대기 중...")
+            
+            # 페이지 로딩 확인을 위한 단계별 체크
+            for i in range(10):  # 10초 동안 체크
+                time.sleep(1)
+                current_url = driver.current_url
+                page_title = driver.title if hasattr(driver, 'title') else "제목 없음"
+                log_message(f"로딩 체크 {i+1}/10 - URL: {current_url}, 제목: {page_title}")
+                
+                # 페이지가 로드되었는지 확인
+                try:
+                    driver.find_element(By.TAG_NAME, "body")
+                    log_message(f"✅ 페이지 body 엘리먼트 확인됨")
+                    break
+                except Exception as body_error:
+                    log_message(f"⚠️ body 엘리먼트 없음: {str(body_error)}")
+                    if i == 9:  # 마지막 시도
+                        raise Exception("페이지 로딩 실패 - body 엘리먼트를 찾을 수 없음")
+            
+            log_message(f"✅ 로그인 페이지 로딩 완료: {driver.current_url}")
+            
+        except Exception as e:
+            log_message(f"❌ 로그인 페이지 이동 실패: {str(e)}")
+            log_message(f"드라이버 상태: {driver is not None}")
+            try:
+                log_message(f"현재 URL: {driver.current_url}")
+                log_message(f"현재 제목: {driver.title}")
+                log_message(f"창 크기: {driver.get_window_size()}")
+            except Exception as status_error:
+                log_message(f"드라이버 상태 확인 실패: {str(status_error)}")
+            import traceback
+            log_message(f"상세 오류: {traceback.format_exc()}")
+            return False
         
         # 2단계: ID/전화번호 탭 클릭 (기존 login.click_ID_phone() 패턴)
         log_message("2단계: ID/전화번호 탭 클릭")
-        driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/ul/li[1]/a").click()
-        time.sleep(3)  # @sleep_after() 데코레이터와 동일
+        try:
+            id_phone_tab = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/ul/li[1]/a")
+            id_phone_tab.click()
+            time.sleep(3)  # @sleep_after() 데코레이터와 동일
+            log_message("ID/전화번호 탭 클릭 완료")
+        except Exception as e:
+            log_message(f"ID/전화번호 탭 클릭 실패: {str(e)}")
+            log_message(f"현재 페이지 제목: {driver.title}")
+            log_message(f"현재 URL: {driver.current_url}")
+            return False
         
         # 3단계: 아이디/비밀번호 입력 (기존 login.input_id_pw() 패턴)
         log_message("3단계: 아이디/비밀번호 입력")
         actions = ActionChains(driver)
         
-        # 아이디 입력 (기존 코드와 정확히 동일)
-        time.sleep(3)  # 기존 코드와 동일
-        clipboard.copy(account_data['계정명'])
-        id_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[1]/input")
-        id_input.click()
-        actions.key_down(COMCON).send_keys('v').key_up(COMCON).perform()
-        log_message("아이디 입력 완료")
+        # 아이디 입력 (클립보드 방식 + 직접 입력 방식 대안)
+        try:
+            time.sleep(3)  # 기존 코드와 동일
+            id_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[1]/input")
+            id_input.click()
+            
+            # 방법 1: 클립보드 방식 시도
+            try:
+                clipboard.copy(account_data['계정명'])
+                actions.key_down(COMCON).send_keys('v').key_up(COMCON).perform()
+                log_message(f"아이디 입력 완료 (클립보드 방식): {account_data['계정명']}")
+            except Exception as clipboard_error:
+                log_message(f"클립보드 방식 실패, 직접 입력 방식 시도: {str(clipboard_error)}")
+                # 방법 2: 직접 입력 방식
+                id_input.clear()
+                id_input.send_keys(account_data['계정명'])
+                log_message(f"아이디 입력 완료 (직접 입력 방식): {account_data['계정명']}")
+                
+        except Exception as e:
+            log_message(f"아이디 입력 완전 실패: {str(e)}")
+            return False
         
         time.sleep(3)  # 기존 코드와 동일
         
-        # 비밀번호 입력 (기존 코드와 정확히 동일)
-        clipboard.copy(account_data['비밀번호'])
-        pw_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[2]/input")
-        pw_input.click()
-        actions.key_down(COMCON).send_keys('v').key_up(COMCON).perform()
-        log_message("비밀번호 입력 완료")
+        # 비밀번호 입력 (클립보드 방식 + 직접 입력 방식 대안)
+        try:
+            pw_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[2]/input")
+            pw_input.click()
+            
+            # 방법 1: 클립보드 방식 시도
+            try:
+                clipboard.copy(account_data['비밀번호'])
+                actions.key_down(COMCON).send_keys('v').key_up(COMCON).perform()
+                log_message("비밀번호 입력 완료 (클립보드 방식)")
+            except Exception as clipboard_error:
+                log_message(f"클립보드 방식 실패, 직접 입력 방식 시도: {str(clipboard_error)}")
+                # 방법 2: 직접 입력 방식
+                pw_input.clear()
+                pw_input.send_keys(account_data['비밀번호'])
+                log_message("비밀번호 입력 완료 (직접 입력 방식)")
+                
+        except Exception as e:
+            log_message(f"비밀번호 입력 완전 실패: {str(e)}")
+            return False
         
         time.sleep(3)  # @sleep_after() 데코레이터와 동일
         
         # 4단계: 로그인 버튼 클릭 (기존 login.click_login_button() 패턴)
         log_message("4단계: 로그인 버튼 클릭")
-        driver.find_element(By.ID, "log.login").click()
-        time.sleep(3)  # @sleep_after() 데코레이터와 동일
+        try:
+            login_button = driver.find_element(By.ID, "log.login")
+            login_button.click()
+            time.sleep(3)  # @sleep_after() 데코레이터와 동일
+            log_message("로그인 버튼 클릭 완료")
+        except Exception as e:
+            log_message(f"로그인 버튼 클릭 실패: {str(e)}")
+            return False
         
         # 5단계: 캡챠 확인 (기존 login.check_capcha_appear() 패턴)
         log_message("5단계: 캡챠 확인")
@@ -1202,29 +1377,54 @@ def login_naver_blog(driver, account_data):
         # 6단계: 로그인 성공 확인 (기존 login.check_login_done() 패턴)
         log_message("6단계: 로그인 성공 확인")
         login_success = False
-        for i in range(10):  # 최대 10번 시도
+        
+        # 더 긴 대기 시간으로 로그인 완료 확인
+        for i in range(15):  # 최대 15번 시도 (15초)
+            current_url = driver.current_url
+            page_title = driver.title
+            log_message(f"로그인 확인 시도 {i+1}/15 - URL: {current_url}, 제목: {page_title}")
+            
+            # 방법 1: 기존 엘리먼트 확인
             try:
-                # 기존 코드의 로그인 성공 확인 방식
                 driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/form/fieldset/span[2]/a")
                 login_success = True
+                log_message("네이버 로그인 성공 (엘리먼트 확인)")
                 break
             except:
-                time.sleep(1)
-                continue
+                pass
+            
+            # 방법 2: URL 기반 확인
+            if "naver.com" in current_url and "nid.naver.com" not in current_url:
+                login_success = True
+                log_message("네이버 로그인 성공 (URL 확인)")
+                break
+            
+            # 방법 3: 로그인 오류 메시지 확인
+            try:
+                error_element = driver.find_element(By.CLASS_NAME, "error_txt")
+                error_message = error_element.text
+                if error_message:
+                    log_message(f"로그인 오류 메시지: {error_message}")
+                    return False
+            except:
+                pass
+            
+            # 방법 4: 페이지 제목으로 확인
+            if "NAVER" in page_title and "로그인" not in page_title:
+                login_success = True
+                log_message("네이버 로그인 성공 (페이지 제목 확인)")
+                break
+            
+            time.sleep(1)
         
         if login_success:
-            log_message("네이버 로그인 성공")
+            log_message("네이버 로그인 최종 성공")
             return True
         else:
-            # URL 기반 확인
-            current_url = driver.current_url
-            log_message(f"로그인 후 URL: {current_url}")
-            if "naver.com" in current_url and "nid.naver.com" not in current_url:
-                log_message("네이버 로그인 성공 (URL 확인)")
-                return True
-            else:
-                log_message("네이버 로그인 실패")
-                return False
+            log_message("네이버 로그인 최종 실패")
+            log_message(f"최종 URL: {driver.current_url}")
+            log_message(f"최종 제목: {driver.title}")
+            return False
             
     except Exception as e:
         log_message(f"네이버 로그인 오류: {str(e)}")
@@ -1766,36 +1966,74 @@ def test_login_page():
         return False
 
 def test_login_process():
-    """실제 로그인 과정 테스트"""
+    """실제 로그인 과정 테스트 - 상세 디버깅 포함"""
     try:
-        log_message("=== 로그인 과정 테스트 시작 ===")
+        log_message("=== 상세 로그인 과정 테스트 시작 ===")
+        
+        # 단계 1: Chrome 드라이버 설정 테스트
+        log_message("1단계: Chrome 드라이버 설정 테스트")
         driver = setup_chrome_driver()
         
         if not driver:
-            log_message("Chrome 드라이버 설정 실패")
+            log_message("❌ Chrome 드라이버 설정 실패")
+            return False
+        else:
+            log_message("✅ Chrome 드라이버 설정 성공")
+        
+        # 단계 2: 계정 데이터 확인
+        log_message("2단계: 계정 데이터 확인")
+        if st.session_state.account_data.empty:
+            log_message("❌ 계정 데이터가 없습니다")
+            driver.quit()
             return False
         
-        # 첫 번째 계정으로 로그인 테스트
         account_data = st.session_state.account_data.iloc[0].to_dict()
-        log_message(f"테스트 계정: {account_data['계정명']}")
+        log_message(f"✅ 테스트 계정: {account_data['계정명']}")
+        log_message(f"비밀번호 길이: {len(account_data['비밀번호'])} 자")
         
-        # 로그인 시도
+        # 단계 3: 네이버 메인 페이지 접속 테스트
+        log_message("3단계: 네이버 메인 페이지 접속 테스트")
+        try:
+            driver.get("https://www.naver.com")
+            time.sleep(3)
+            log_message(f"✅ 네이버 메인 페이지 접속 성공: {driver.current_url}")
+        except Exception as e:
+            log_message(f"❌ 네이버 메인 페이지 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 단계 4: 로그인 페이지 이동 테스트
+        log_message("4단계: 로그인 페이지 이동 테스트")
+        try:
+            driver.get("https://nid.naver.com/nidlogin.login")
+            time.sleep(3)
+            log_message(f"✅ 로그인 페이지 이동 성공: {driver.current_url}")
+            log_message(f"페이지 제목: {driver.title}")
+        except Exception as e:
+            log_message(f"❌ 로그인 페이지 이동 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 단계 5: 실제 로그인 시도
+        log_message("5단계: 실제 로그인 시도")
         login_result = login_naver_blog(driver, account_data)
         
         if login_result:
-            log_message("로그인 테스트 성공!")
+            log_message("✅ 로그인 테스트 최종 성공!")
             # 스크린샷 저장
             try:
-                driver.save_screenshot("login_success_debug.png")
-                log_message("로그인 성공 스크린샷 저장됨: login_success_debug.png")
+                screenshot_path = "login_success_debug.png"
+                driver.save_screenshot(screenshot_path)
+                log_message(f"로그인 성공 스크린샷 저장됨: {screenshot_path}")
             except Exception as e:
                 log_message(f"스크린샷 저장 실패: {str(e)}")
         else:
-            log_message("로그인 테스트 실패!")
+            log_message("❌ 로그인 테스트 최종 실패!")
             # 실패 스크린샷 저장
             try:
-                driver.save_screenshot("login_failed_debug.png")
-                log_message("로그인 실패 스크린샷 저장됨: login_failed_debug.png")
+                screenshot_path = "login_failed_debug.png"
+                driver.save_screenshot(screenshot_path)
+                log_message(f"로그인 실패 스크린샷 저장됨: {screenshot_path}")
             except Exception as e:
                 log_message(f"스크린샷 저장 실패: {str(e)}")
         
@@ -1807,6 +2045,220 @@ def test_login_process():
         log_message(f"로그인 과정 테스트 실패: {str(e)}")
         import traceback
         log_message(f"상세 오류: {traceback.format_exc()}")
+        return False
+
+def test_naver_connection():
+    """네이버 연결 테스트"""
+    try:
+        log_message("=== 네이버 연결 테스트 시작 ===")
+        
+        # 단계 1: Chrome 드라이버 설정
+        log_message("1단계: Chrome 드라이버 설정")
+        driver = setup_chrome_driver()
+        if not driver:
+            log_message("❌ Chrome 드라이버 설정 실패")
+            return False
+        log_message("✅ Chrome 드라이버 설정 성공")
+        
+        # 단계 2: 네이버 메인 페이지 접속
+        log_message("2단계: 네이버 메인 페이지 접속")
+        try:
+            driver.get("https://www.naver.com")
+            time.sleep(3)
+            title = driver.title
+            url = driver.current_url
+            log_message(f"✅ 네이버 메인 페이지 접속 성공")
+            log_message(f"페이지 제목: {title}")
+            log_message(f"현재 URL: {url}")
+        except Exception as e:
+            log_message(f"❌ 네이버 메인 페이지 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 단계 3: 네이버 로그인 페이지 접속
+        log_message("3단계: 네이버 로그인 페이지 접속")
+        try:
+            driver.get("https://nid.naver.com/nidlogin.login")
+            time.sleep(3)
+            title = driver.title
+            url = driver.current_url
+            log_message(f"✅ 네이버 로그인 페이지 접속 성공")
+            log_message(f"페이지 제목: {title}")
+            log_message(f"현재 URL: {url}")
+            
+            # 로그인 폼 존재 확인
+            try:
+                id_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[1]/input")
+                pw_input = driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div/div[1]/form/ul/li/div/div[1]/div/div[2]/input")
+                login_btn = driver.find_element(By.ID, "log.login")
+                log_message("✅ 로그인 폼 요소들이 정상적으로 발견됨")
+            except Exception as e:
+                log_message(f"❌ 로그인 폼 요소 확인 실패: {str(e)}")
+                
+        except Exception as e:
+            log_message(f"❌ 네이버 로그인 페이지 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        driver.quit()
+        log_message("✅ 네이버 연결 테스트 완료")
+        return True
+        
+    except Exception as e:
+        log_message(f"네이버 연결 테스트 오류: {str(e)}")
+        if 'driver' in locals():
+            driver.quit()
+        return False
+
+def test_simple_selenium():
+    """가장 간단한 셀레니움 테스트"""
+    try:
+        log_message("=== 초간단 셀레니움 테스트 시작 ===")
+        
+        # 1단계: 드라이버 생성 테스트
+        log_message("1단계: Chrome 드라이버 생성")
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.chrome.options import Options
+            from webdriver_manager.chrome import ChromeDriverManager
+            
+            service = Service(ChromeDriverManager().install())
+            options = Options()
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            
+            driver = webdriver.Chrome(service=service, options=options)
+            log_message("✅ Chrome 드라이버 생성 성공")
+        except Exception as e:
+            log_message(f"❌ Chrome 드라이버 생성 실패: {str(e)}")
+            return False
+        
+        # 2단계: 구글 접속 테스트
+        log_message("2단계: 구글 접속 테스트")
+        try:
+            driver.get("https://www.google.com")
+            time.sleep(2)
+            title = driver.title
+            log_message(f"✅ 구글 접속 성공: {title}")
+        except Exception as e:
+            log_message(f"❌ 구글 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 3단계: 네이버 접속 테스트
+        log_message("3단계: 네이버 접속 테스트")
+        try:
+            driver.get("https://www.naver.com")
+            time.sleep(2)
+            title = driver.title
+            url = driver.current_url
+            log_message(f"✅ 네이버 접속 성공: {title}")
+            log_message(f"현재 URL: {url}")
+        except Exception as e:
+            log_message(f"❌ 네이버 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 4단계: 네이버 로그인 페이지 접속 테스트
+        log_message("4단계: 네이버 로그인 페이지 접속 테스트")
+        try:
+            driver.get("https://nid.naver.com/nidlogin.login")
+            time.sleep(3)
+            title = driver.title
+            url = driver.current_url
+            log_message(f"✅ 로그인 페이지 접속 성공: {title}")
+            log_message(f"현재 URL: {url}")
+            
+            # 로그인 폼 요소 확인
+            try:
+                id_field = driver.find_element(By.ID, "id")
+                log_message("✅ ID 입력 필드 발견")
+            except:
+                log_message("⚠️ ID 입력 필드 없음")
+            
+            try:
+                pw_field = driver.find_element(By.ID, "pw")
+                log_message("✅ 비밀번호 입력 필드 발견")
+            except:
+                log_message("⚠️ 비밀번호 입력 필드 없음")
+                
+        except Exception as e:
+            log_message(f"❌ 로그인 페이지 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 5단계: 5초 대기 후 종료
+        log_message("5단계: 5초 대기 후 드라이버 종료")
+        time.sleep(5)
+        driver.quit()
+        log_message("✅ 드라이버 정상 종료")
+        
+        log_message("=== 초간단 셀레니움 테스트 완료 ===")
+        return True
+        
+    except Exception as e:
+        log_message(f"❌ 초간단 테스트 중 예외: {str(e)}")
+        if 'driver' in locals():
+            try:
+                driver.quit()
+            except:
+                pass
+        return False
+
+def test_login_only():
+    """로그인만 테스트하고 드라이버 유지"""
+    try:
+        log_message("=== 로그인 전용 테스트 시작 ===")
+        
+        # Chrome 드라이버 설정
+        log_message("Chrome 드라이버 설정")
+        driver = setup_chrome_driver()
+        if not driver:
+            log_message("❌ Chrome 드라이버 설정 실패")
+            return False
+        log_message("✅ Chrome 드라이버 설정 성공")
+        
+        # 계정 데이터 가져오기
+        account_data = st.session_state.account_data.iloc[0].to_dict()
+        log_message(f"테스트 계정: {account_data['계정명']}")
+        
+        # 네이버 메인 페이지 이동
+        log_message("네이버 메인 페이지 이동")
+        try:
+            driver.get("https://www.naver.com")
+            time.sleep(3)
+            log_message(f"✅ 네이버 메인 페이지 접속: {driver.current_url}")
+        except Exception as e:
+            log_message(f"❌ 네이버 메인 페이지 접속 실패: {str(e)}")
+            driver.quit()
+            return False
+        
+        # 로그인 시도
+        log_message("로그인 시도")
+        login_result = login_naver_blog(driver, account_data)
+        
+        if login_result:
+            log_message("✅ 로그인 성공! 드라이버를 5초간 유지합니다.")
+            log_message(f"로그인 성공 후 URL: {driver.current_url}")
+            time.sleep(5)  # 5초간 드라이버 유지하여 상태 확인
+            driver.quit()
+            log_message("드라이버 종료 완료")
+            return True
+        else:
+            log_message("❌ 로그인 실패")
+            try:
+                driver.save_screenshot("login_only_failed.png")
+                log_message("로그인 실패 스크린샷 저장: login_only_failed.png")
+            except:
+                pass
+            driver.quit()
+            return False
+        
+    except Exception as e:
+        log_message(f"로그인 전용 테스트 오류: {str(e)}")
+        if 'driver' in locals():
+            driver.quit()
         return False
 
 def execute_task(platform, api_key, phone_number, content, min_wait, max_wait, use_dynamic_ip):
@@ -1821,6 +2273,21 @@ def execute_task(platform, api_key, phone_number, content, min_wait, max_wait, u
     if st.session_state.account_data.empty:
         st.error("❌ 계정 데이터가 없습니다. 먼저 계정을 추가해주세요.")
         log_message("작업 수행 실패: 계정 데이터 없음")
+        return
+    
+    # 필수 컬럼 확인
+    required_columns = ['계정명', '비밀번호']
+    missing_columns = [col for col in required_columns if col not in st.session_state.account_data.columns]
+    if missing_columns:
+        st.error(f"❌ 계정 데이터에 필수 컬럼이 없습니다: {missing_columns}")
+        log_message(f"작업 수행 실패: 필수 컬럼 누락 - {missing_columns}")
+        return
+    
+    # 빈 데이터 확인
+    empty_data = st.session_state.account_data[st.session_state.account_data[required_columns].isnull().any(axis=1)]
+    if not empty_data.empty:
+        st.error("❌ 일부 계정에 빈 데이터가 있습니다. 모든 계정명과 비밀번호를 입력해주세요.")
+        log_message(f"작업 수행 실패: 빈 계정 데이터 존재")
         return
     
     log_message("=== 작업 수행 시작 ===")
@@ -1865,67 +2332,110 @@ def execute_task(platform, api_key, phone_number, content, min_wait, max_wait, u
             log_message(f"드라이버 상태 확인 실패: {str(e)}")
         
         # 네이버 메인 페이지로 이동 테스트
-        log_message("네이버 메인 페이지 이동 테스트")
+        log_message("네이버 메인 페이지 이동 테스트 시작")
+        status_text.text("네이버 메인 페이지 이동 중...")
         try:
             driver.get("https://www.naver.com")
             time.sleep(3)
-            log_message(f"네이버 메인 페이지 이동 완료: {driver.current_url}")
+            log_message(f"✅ 네이버 메인 페이지 이동 완료: {driver.current_url}")
             log_message(f"네이버 메인 페이지 제목: {driver.title}")
         except Exception as e:
-            log_message(f"네이버 메인 페이지 이동 실패: {str(e)}")
+            log_message(f"❌ 네이버 메인 페이지 이동 실패: {str(e)}")
+            st.error(f"❌ 네이버 메인 페이지 접속에 실패했습니다: {str(e)}")
+            if driver:
+                driver.quit()
             return
         
         # AI 콘텐츠 생성
+        log_message("AI 콘텐츠 생성 시작")
         status_text.text("AI 콘텐츠 생성 중...")
         progress_bar.progress(0.2)
-        generated_content = generate_content_with_gemini(content)
-        if generated_content:
-            log_message("AI 콘텐츠 생성 완료")
-            final_content = generated_content
-        else:
-            log_message("AI 콘텐츠 생성 실패 - 원본 콘텐츠 사용")
+        
+        try:
+            generated_content = generate_content_with_gemini(content)
+            if generated_content:
+                log_message("✅ AI 콘텐츠 생성 완료")
+                log_message(f"생성된 콘텐츠 길이: {len(generated_content)} 문자")
+                final_content = generated_content
+            else:
+                log_message("⚠️ AI 콘텐츠 생성 실패 - 원본 콘텐츠 사용")
+                final_content = content
+        except Exception as e:
+            log_message(f"❌ AI 콘텐츠 생성 중 오류 발생: {str(e)}")
+            log_message("원본 콘텐츠를 사용합니다")
             final_content = content
         
         # 각 계정으로 작업 수행
         total_accounts = len(st.session_state.account_data)
+        log_message(f"=== 계정별 작업 시작 ===")
+        log_message(f"총 계정 수: {total_accounts}")
+        log_message(f"선택된 플랫폼: {platform}")
         
         for idx, (_, account) in enumerate(st.session_state.account_data.iterrows()):
             try:
+                log_message(f"\n=== 계정 {idx + 1}/{total_accounts} 처리 시작 ===")
+                log_message(f"계정명: {account['계정명']}")
+                log_message(f"처리 전 드라이버 상태: {driver is not None}")
+                
+                if driver:
+                    try:
+                        current_url = driver.current_url
+                        log_message(f"처리 전 현재 URL: {current_url}")
+                    except Exception as url_error:
+                        log_message(f"URL 확인 실패: {str(url_error)}")
+                        # 드라이버가 죽었을 수 있으므로 재시작
+                        log_message("드라이버 재시작 시도")
+                        driver.quit()
+                        driver = setup_chrome_driver()
+                        if not driver:
+                            log_message("드라이버 재시작 실패")
+                            break
+                        log_message("드라이버 재시작 성공")
+                
                 status_text.text(f"계정 {idx + 1}/{total_accounts} 처리 중: {account['계정명']}")
                 progress_bar.progress(0.3 + (idx * 0.6 / total_accounts))
                 
                 # 로그인
                 log_message(f"계정 {account['계정명']} 로그인 시도 시작")
-                log_message(f"현재 URL: {driver.current_url}")
                 
                 login_result = login_to_platform(driver, platform, account)
                 log_message(f"로그인 결과: {login_result}")
                 
                 if login_result:
-                    log_message(f"계정 {account['계정명']} 로그인 성공")
+                    log_message(f"✅ 계정 {account['계정명']} 로그인 성공")
                     log_message(f"로그인 후 URL: {driver.current_url}")
                     
-                    # 글 작성
-                    log_message(f"계정 {account['계정명']} 글 작성 시작")
-                    write_result = write_blog_post(driver, platform, final_content, st.session_state.keyword_data)
-                    log_message(f"글 작성 결과: {write_result}")
+                    # 임시로 글 작성 건너뛰기 (로그인 테스트용)
+                    log_message("⚠️ 테스트를 위해 글 작성 과정을 건너뜁니다")
+                    log_message("로그인이 성공했으므로 성공으로 간주합니다")
+                    success_count += 1
                     
-                    if write_result:
-                        log_message(f"계정 {account['계정명']} 글 작성 성공")
-                        success_count += 1
-                    else:
-                        log_message(f"계정 {account['계정명']} 글 작성 실패")
-                    
-                    # 대기시간 적용
-                    wait_time = random.randint(min_wait * 60, max_wait * 60)
-                    log_message(f"대기시간: {wait_time}초")
-                    time.sleep(wait_time)
+                    # 짧은 대기시간 적용 (테스트용)
+                    log_message("5초 대기 후 다음 계정 처리")
+                    time.sleep(5)
                 else:
-                    log_message(f"계정 {account['계정명']} 로그인 실패")
-                    log_message(f"로그인 실패 후 URL: {driver.current_url}")
+                    log_message(f"❌ 계정 {account['계정명']} 로그인 실패")
+                    try:
+                        current_url = driver.current_url
+                        page_title = driver.title
+                        log_message(f"로그인 실패 후 URL: {current_url}")
+                        log_message(f"로그인 실패 후 페이지 제목: {page_title}")
+                    except Exception as url_error:
+                        log_message(f"로그인 실패 후 페이지 정보 확인 실패: {str(url_error)}")
                 
             except Exception as e:
-                log_message(f"계정 {account['계정명']} 처리 중 오류: {str(e)}")
+                log_message(f"❌ 계정 {account['계정명']} 처리 중 예외 발생: {str(e)}")
+                import traceback
+                log_message(f"상세 스택 트레이스: {traceback.format_exc()}")
+                
+                # 드라이버 상태 확인
+                try:
+                    if driver:
+                        current_url = driver.current_url
+                        log_message(f"예외 발생 시점 URL: {current_url}")
+                except:
+                    log_message("예외 발생 후 드라이버 상태 확인 불가 - 드라이버가 종료되었을 수 있음")
+                
                 continue
         
         # 완료
@@ -1941,13 +2451,31 @@ def execute_task(platform, api_key, phone_number, content, min_wait, max_wait, u
             st.error("❌ 모든 계정에서 작업이 실패했습니다.")
             
     except Exception as e:
-        log_message(f"작업 수행 중 오류: {str(e)}")
+        log_message(f"❌ 전체 작업 수행 중 예외 발생: {str(e)}")
+        import traceback
+        log_message(f"전체 작업 상세 스택 트레이스: {traceback.format_exc()}")
         st.error(f"❌ 작업 수행 중 오류가 발생했습니다: {str(e)}")
+        
+        # 드라이버 상태 확인
+        try:
+            if driver:
+                current_url = driver.current_url
+                log_message(f"전체 예외 발생 시점 URL: {current_url}")
+        except:
+            log_message("전체 예외 발생 후 드라이버 상태 확인 불가")
     
     finally:
+        log_message("=== 작업 정리 시작 ===")
         if driver:
-            driver.quit()
-            log_message("Chrome 드라이버 종료")
+            try:
+                driver.quit()
+                log_message("✅ Chrome 드라이버 정상 종료")
+            except Exception as e:
+                log_message(f"Chrome 드라이버 종료 중 오류: {str(e)}")
+        else:
+            log_message("드라이버가 이미 종료되어 있음")
+        
+        log_message("=== 전체 작업 프로세스 완료 ===")
 
 def reset_data():
     """데이터 초기화"""
