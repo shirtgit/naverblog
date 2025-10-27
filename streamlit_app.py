@@ -99,6 +99,10 @@ def init_session_state():
         st.session_state.api_verification_message = ''
     if 'verified_model' not in st.session_state:
         st.session_state.verified_model = 'gemini-2.5-flash'
+    if 'naver_id' not in st.session_state:
+        st.session_state.naver_id = ''
+    if 'naver_password' not in st.session_state:
+        st.session_state.naver_password = ''
 
 def load_cache_data():
     """캐시 데이터 로드"""
@@ -112,6 +116,8 @@ def load_cache_data():
                 st.session_state.use_dynamic_ip = text_cache.get("toggle_button", True)
                 st.session_state.allow_comments = text_cache.get("comment_cb", True)
                 st.session_state.api_key = text_cache.get("api_key", "")
+                st.session_state.naver_id = text_cache.get("naver_id", "")
+                st.session_state.naver_password = text_cache.get("naver_password", "")
                 # API 키가 로드되면 재인증 필요
                 st.session_state.api_key_verified = False
         
@@ -145,7 +151,9 @@ def save_cache_data():
             "waiting_max": st.session_state.get('waiting_max', 10),
             "api_key": st.session_state.get('api_key', ''),
             "phone_number": st.session_state.get('phone_number', ''),
-            "content_input": st.session_state.get('content_template', '')
+            "content_input": st.session_state.get('content_template', ''),
+            "naver_id": st.session_state.get('naver_id', ''),
+            "naver_password": st.session_state.get('naver_password', '')
         }
         
         text_cache_path = os.path.join(os.getcwd(), "cache", ".cache_text")
@@ -345,6 +353,62 @@ def verify_api_key():
             st.session_state.api_verification_message = f"API 키 검증 중 오류가 발생했습니다: {error_msg}"
         
         add_log(f"API 키 인증 실패: {st.session_state.api_verification_message}", "ERROR")
+
+def render_naver_login_section():
+    """네이버 로그인 섹션 렌더링"""
+    st.markdown('<div class="section-header">🔐 네이버 로그인</div>', unsafe_allow_html=True)
+    
+    # 네이버 로그인 정보 입력
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        naver_id = st.text_input(
+            "네이버 아이디",
+            value=st.session_state.get('naver_id', ''),
+            key="naver_id_input",
+            placeholder="네이버 아이디를 입력하세요",
+            help="네이버 블로그/카페 자동화에 사용할 네이버 계정 아이디"
+        )
+        # 세션 상태 업데이트
+        if naver_id != st.session_state.get('naver_id', ''):
+            st.session_state.naver_id = naver_id
+    
+    with col2:
+        naver_password = st.text_input(
+            "네이버 패스워드",
+            value=st.session_state.get('naver_password', ''),
+            type="password",
+            key="naver_password_input",
+            placeholder="네이버 패스워드를 입력하세요",
+            help="네이버 블로그/카페 자동화에 사용할 네이버 계정 패스워드"
+        )
+        # 세션 상태 업데이트
+        if naver_password != st.session_state.get('naver_password', ''):
+            st.session_state.naver_password = naver_password
+    
+    # 로그인 정보 상태 표시
+    if st.session_state.get('naver_id', '').strip() and st.session_state.get('naver_password', '').strip():
+        st.success("✅ 네이버 로그인 정보가 입력되었습니다.")
+    elif st.session_state.get('naver_id', '').strip() or st.session_state.get('naver_password', '').strip():
+        st.warning("⚠️ 아이디와 패스워드를 모두 입력해주세요.")
+    else:
+        st.info("💡 네이버 블로그/카페 자동화를 위해 네이버 계정 정보를 입력해주세요.")
+    
+    # 보안 안내
+    with st.expander("🔒 보안 및 개인정보 보호", expanded=False):
+        st.markdown("""
+        **개인정보 보호 안내:**
+        
+        - 입력된 아이디와 패스워드는 현재 세션에서만 사용됩니다
+        - 브라우저를 닫으면 모든 정보가 삭제됩니다
+        - 서버나 외부에 저장되지 않습니다
+        - 오직 네이버 자동 로그인 용도로만 사용됩니다
+        
+        **권장사항:**
+        - 2단계 인증이 설정된 계정의 경우 앱 비밀번호를 사용하세요
+        - 가능하면 테스트 전용 계정을 사용하는 것을 권장합니다
+        - 작업 완료 후 브라우저를 닫아 정보를 완전히 삭제하세요
+        """)
 
 def render_file_upload_section():
     """파일 업로드 섹션 렌더링"""
@@ -609,6 +673,17 @@ def validate_inputs():
         add_log("API 키가 인증되지 않았습니다.", "ERROR")
         return False
     
+    # 네이버 로그인 정보 검증
+    if not st.session_state.get('naver_id', '').strip():
+        st.error("❌ 네이버 아이디를 입력해주세요.")
+        add_log("네이버 아이디가 입력되지 않았습니다.", "ERROR")
+        return False
+    
+    if not st.session_state.get('naver_password', '').strip():
+        st.error("❌ 네이버 패스워드를 입력해주세요.")
+        add_log("네이버 패스워드가 입력되지 않았습니다.", "ERROR")
+        return False
+    
     if not st.session_state.accounts_data:
         st.error("❌ 계정 정보를 업로드해주세요.")
         add_log("계정 정보가 없습니다.", "ERROR")
@@ -647,11 +722,23 @@ def run_automation_task():
             return
         add_log("웹드라이버를 초기화했습니다.", "SUCCESS")
         
-        # 계정 정보로 로그인
-        account = st.session_state.accounts_data[0]  # 첫 번째 계정 사용
-        id_val = account.get('계정명', '')
-        pw_val = account.get('비밀번호', '')
-        place = account.get('장소', '')
+        # 네이버 로그인 정보 사용 (Streamlit에서 입력한 정보 우선)
+        naver_id = st.session_state.get('naver_id', '').strip()
+        naver_password = st.session_state.get('naver_password', '').strip()
+        
+        # 계정 정보에서 장소 정보 가져오기 (첫 번째 계정 사용)
+        place = ""
+        if st.session_state.accounts_data:
+            account = st.session_state.accounts_data[0]
+            place = account.get('장소', '')
+            # 네이버 로그인 정보가 없으면 계정 데이터 사용 (호환성 유지)
+            if not naver_id:
+                naver_id = account.get('계정명', '')
+            if not naver_password:
+                naver_password = account.get('비밀번호', '')
+        
+        id_val = naver_id
+        pw_val = naver_password
         
         add_log(f"로그인을 시도합니다. (계정: {id_val})", "INFO")
         if not task_executor.execute_login(id_val, pw_val):
@@ -723,6 +810,9 @@ def main():
     with col1:
         # API 인증 섹션 (최상단에 배치)
         render_api_auth_section()
+        
+        # 네이버 로그인 섹션
+        render_naver_login_section()
         
         # 파일 업로드 섹션
         render_file_upload_section()
