@@ -56,7 +56,27 @@ if 'log_messages' not in st.session_state:
 if 'api_authenticated' not in st.session_state:
     st.session_state.api_authenticated = False
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = ""
+    # 보안 설정에서 API 키 자동 로드 시도
+    try:
+        # 1순위: Streamlit secrets에서 가져오기
+        if hasattr(st, 'secrets') and 'general' in st.secrets:
+            api_key = st.secrets.general.get("GOOGLE_GEMINI_API_KEY", "")
+            if api_key and api_key != "여기에-실제-API-키를-입력하세요":
+                st.session_state.api_key = api_key
+                st.session_state.api_authenticated = True
+            else:
+                st.session_state.api_key = ""
+        else:
+            # 2순위: 환경 변수에서 가져오기  
+            import os
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY", "")
+            if api_key and api_key != "여기에-실제-API-키를-입력하세요":
+                st.session_state.api_key = api_key
+                st.session_state.api_authenticated = True
+            else:
+                st.session_state.api_key = ""
+    except Exception:
+        st.session_state.api_key = ""
 if 'selected_model' not in st.session_state:
     st.session_state.selected_model = "gemini-1.5-flash"
 if 'image_folder' not in st.session_state:

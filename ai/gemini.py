@@ -1,28 +1,52 @@
 import re
-
+import os
 from ui import log
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
 
-from data import text_data
-
-# gemini_key = "AIzaSyDo6wlM9Q6SFKS-rpHoS_sJQabVt9OEDnI"
 model = None
+
+
+def get_api_key():
+    """API 키를 환경 변수 또는 secrets.toml에서 가져오기"""
+    # 1순위: 환경 변수에서 가져오기
+    api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+    
+    if api_key:
+        return api_key
+    
+    # 2순위: Streamlit secrets에서 가져오기 (Streamlit 환경인 경우)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and 'general' in st.secrets:
+            api_key = st.secrets.general.get("GOOGLE_GEMINI_API_KEY")
+            if api_key and api_key != "여기에-실제-API-키를-입력하세요":
+                return api_key
+    except (ImportError, AttributeError, KeyError):
+        pass
+    
+    # 3순위: 기존 text_data에서 가져오기 (호환성 유지)
+    try:
+        from data import text_data
+        api_key = text_data.TextData().get_api_number()
+        if api_key:
+            return api_key
+    except Exception:
+        pass
+    
+    raise ValueError("Google Gemini API 키를 찾을 수 없습니다. 환경 변수 GOOGLE_GEMINI_API_KEY 또는 secrets.toml 파일을 확인해주세요.")
 
 
 def init_gemini():
     global model
-    # 테스트 용도로 주석처리
-    api_key = text_data.TextData().get_api_number()
-    genai.configure(api_key=api_key)
-
-    # genai.configure(api_key=gemini_key)
-
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    # dotenv.load_dotenv()
-    # genai.configure(api_key=os.getenv("API_KEY"))
-    # model = genai.GenerativeModel('gemini-1.5-flash')
-    # model = genai.GenerativeModel('gemini-1.0-pro')
+    try:
+        api_key = get_api_key()
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        log.append_log("[INFO] Gemini API 초기화 완료")
+    except Exception as e:
+        log.append_log(f"[ERROR] Gemini API 초기화 실패: {str(e)}")
+        raise
 
 def create_title(titles, address, company):
     global model
