@@ -1,48 +1,20 @@
-# 네이버 블로그/카페 자동 포스팅
-
-## 🚀 프로그램 실행 방법
-
-### 1. GUI 버전 (wxPython)
-```bash
-python main.py
-```
-
-### 2. 웹 버전 (Streamlit) ⭐ 추천
-```bash
-streamlit run streamlit_app.py
-```
-또는
-```bash
-python -m streamlit run streamlit_app.py
-```
-
-웹 브라우저에서 `http://localhost:8501` 으로 접속하여 사용하세요.
-
-## ✨ 주요 기능
-
-### 1주차: 기능 완성 + UI
-1. **기능 완성**
+## 1주차: 기능 완성 + UI
+1. 기능 완성
    - 파일 업로드 (ID,PW / 키워드 / 웹주소)
    - 업로드 한 파일 파싱
-   - 캐시값 관리
+   - 캐시값
    - 글 & 사진 & 영상 업로드 자동화
    - 기타 기능
      - 댓글 허용기능 (카페)
      - 대기시간 최소, 최대값: 범위 내 random
-     - 유동 IP 지원
-
-2. **UI (두 가지 버전 제공)**
-   
-   **공용 기능:**
-   - ID, PW 업로드 및 관리
-   - 키워드 업로드 및 관리
-   - 전화번호, API KEY 설정
-   - 유동IP on/off 토글
-   - 실시간 로그 표시
-   
-   **플랫폼별 기능:**
-   - 블로그: 자동 카테고리 설정
-   - 카페: 웹주소 업로드, 댓글 허용 설정
+2. UI
+   1. **공용**
+      - <span style='color:red'>ID, PW 업로드 (버튼 + 리스트)</span>
+      - <span style='color:red'>키워드 업로드 (버튼 + 리스트)</span>
+      - <span style='color:red'>전화번호</span>, API KEY 텍스트박스
+      - 유동IP on/off버튼 (토글 or 버튼)  
+   2. <span style='color:red'>**나눠야 할 것(블로그 / 카페)**</span>
+      - <span style='color:red'>웹주소 업로드 (버튼 + 리스트)</span>
 
 ## 2주차: 사진 및 영상 제작 + 글밥 미리 저장
 1. Static 사진
