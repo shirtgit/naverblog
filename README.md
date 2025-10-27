@@ -19,6 +19,13 @@ cd naverblog
 ```
 
 ### 2. 의존성 설치
+
+#### 로컬 개발 환경 (전체 기능)
+```bash
+pip install -r requirements-local.txt
+```
+
+#### 클라우드 환경 또는 최소 설치
 ```bash
 pip install -r requirements.txt
 ```

@@ -1,0 +1,14 @@
+# Full requirements for local development
+streamlit
+requests
+beautifulsoup4
+google-generativeai
+pillow
+python-dotenv
+pandas
+selenium
+webdriver-manager
+pyperclip
+# Windows-specific (optional)
+# pywin32
+# wxPython

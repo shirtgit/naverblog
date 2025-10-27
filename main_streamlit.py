@@ -34,7 +34,8 @@ try:
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
-    st.error("Selenium이 설치되지 않았습니다. 자동화 기능을 사용할 수 없습니다.")
+    # 클라우드 환경에서는 경고 대신 정보 메시지로 처리
+    print("INFO: Selenium not available - automation features disabled")
 
 # 클립보드 관련 모듈 (선택적)
 try:
@@ -54,7 +55,7 @@ try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
 except ImportError as e:
-    st.warning(f"Google Generative AI 라이브러리를 사용할 수 없습니다: {e}")
+    print(f"INFO: Google Generative AI not available: {e}")
     GEMINI_AVAILABLE = False
 
 # 전역 변수 (기존 webdriver.py와 동일)
@@ -407,6 +408,27 @@ def generate_content_with_gemini(content):
 def main():
     # 헤더
     st.title("📝 네이버 포스팅 자동화 프로그램")
+    
+    # 환경 정보 표시
+    col_env1, col_env2, col_env3 = st.columns(3)
+    
+    with col_env1:
+        if SELENIUM_AVAILABLE:
+            st.success("🤖 자동화 지원")
+        else:
+            st.info("💡 콘텐츠 생성 전용")
+    
+    with col_env2:
+        if GEMINI_AVAILABLE:
+            st.success("🧠 AI 생성 지원")
+        else:
+            st.warning("⚠️ AI 생성 불가")
+    
+    with col_env3:
+        if GUI_AVAILABLE:
+            st.success("📁 파일 선택 지원")
+        else:
+            st.info("📤 파일 업로드 전용")
     st.markdown("---")
     
     # 사이드바 - 설정
@@ -1175,6 +1197,10 @@ def process_keyword_file(file):
 
 def setup_chrome_driver():
     """Chrome 드라이버 설정 (상세 디버깅 강화)"""
+    if not SELENIUM_AVAILABLE:
+        log_message("❌ Selenium이 사용 불가능한 환경입니다.")
+        return None
+    
     try:
         log_message("=== Chrome 드라이버 설정 시작 ===")
         log_message(f"현재 작업 디렉토리: {os.getcwd()}")

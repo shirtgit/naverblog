@@ -1,3 +1,4 @@
+# Packages for Streamlit Cloud - minimal version
 streamlit
 requests
 beautifulsoup4
