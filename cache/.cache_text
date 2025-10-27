@@ -1,0 +1,9 @@
+{
+    "waiting_max": "61",
+    "waiting_min": "60",
+    "phone_number": "010-9872-1349",
+    "api_number": "AIzaSyAIZqqE6WCo4rSzHuRtAvkUkLf8mft4FN8",
+    "content_input": "안녕하세요, %주소% %업체%입니다.\n\n%썸네일%\n\n[본문]\n\n%영상%\n\n끝까지 읽어주셔서 감사합니다.\n",
+    "status_rb": 2,
+    "comment_cb": true
+}
